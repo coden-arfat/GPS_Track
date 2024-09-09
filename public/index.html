@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Location Tracking</title>
+</head>
+<body>
+    <h1>Real-Time Geolocation Tracking</h1>
+    <p id="status">Requesting location access...</p>
+    <p>Latitude: <span id="latitude">-</span></p>
+    <p>Longitude: <span id="longitude">-</span></p>
+
+    <script>
+        let currentPosition = null;
+
+        // Check if Geolocation is supported
+        if ("geolocation" in navigator) {
+            // Request location access and track the position
+            navigator.geolocation.watchPosition(
+                // Success callback: called whenever the position changes
+                function(position) {
+                    currentPosition = position;  // Store the current position
+                    
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+
+                    // Update the UI with the latest position
+                    document.getElementById("latitude").textContent = latitude;
+                    document.getElementById("longitude").textContent = longitude;
+                    document.getElementById("status").textContent = "Tracking location...";
+                },
+                // Error callback
+                function(error) {
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            document.getElementById("status").textContent = "Location access denied by the user.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            document.getElementById("status").textContent = "Location information is unavailable.";
+                            break;
+                        case error.TIMEOUT:
+                            document.getElementById("status").textContent = "Location request timed out.";
+                            break;
+                        case error.UNKNOWN_ERROR:
+                            document.getElementById("status").textContent = "An unknown error occurred.";
+                            break;
+                    }
+                },
+                // Options
+                {
+                    enableHighAccuracy: true,  // Use GPS if available
+                    timeout: 10000,            // Timeout after 10 seconds
+                    maximumAge: 0              // No cached positions
+                }
+            );
+
+            // Send the location to the backend every 5 seconds
+            setInterval(() => {
+                if (currentPosition) {
+                    const latitude = currentPosition.coords.latitude;
+                    const longitude = currentPosition.coords.longitude;
+
+                    fetch('/location', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            latitude: latitude,
+                            longitude: longitude
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Location sent to server:", data);
+                    })
+                    .catch(error => {
+                        console.error("Error sending location to server:", error);
+                    });
+                }
+            }, 5000); // Update every 5 seconds
+
+        } else {
+            document.getElementById("status").textContent = "Geolocation is not supported by this browser.";
+        }
+    </script>
+</body>
+</html>
+
